@@ -21,6 +21,8 @@ use App\Services\PdfWriter\FoerderbewilligungPdfWriterService;
 use App\Test\TestCase\Traits\QueueTrait;
 use Cake\TestSuite\EmailTrait;
 use Cake\Http\Exception\NotFoundException;
+use App\Services\PdfWriter\VerwendungsnachweisPdfWriterService;
+use App\Services\FolderService;
 
 class FundingsControllerTest extends AppTestCase
 {
@@ -123,18 +125,19 @@ class FundingsControllerTest extends AppTestCase
         }
     }
 
-    public function testCompleteFundingProcess(): void
+    public function testFundingProcessOk(): void
     {
 
         $fundingsTable = $this->getTableLocator()->get('Fundings');
         $testWorkshopUid = 2;
+        $route = Configure::read('AppConfig.htmlHelper')->urlFundingsEdit($testWorkshopUid);
         $this->loginAsOrga();
         $this->prepareWorkshopForFunding($testWorkshopUid);
 
-        $this->get(Configure::read('AppConfig.htmlHelper')->urlFundingsEdit($testWorkshopUid));
+        $this->get($route);
         $this->assertResponseOk();
 
-        $fundingUid = $fundingsTable->find()->first()->uid;
+        $fundingUid = $fundingsTable->find()->orderByDesc('uid')->first()->uid;
         $funding = $fundingsTable->getUnprivatizedFundingWithAllAssociations($fundingUid);
         $this->assertEquals(FundingsTable::FUNDINGBUDGETPLANS_COUNT, count($funding->fundingbudgetplans));
         $this->assertNotEmpty($funding->fundingsupporter);
@@ -190,21 +193,22 @@ class FundingsControllerTest extends AppTestCase
         ];
 
 
-        $uploadTemplateJpgFile = TESTS . 'files/test.jpg';
+        $uploadTemplate1JpgFile = TESTS . 'files/test.jpg';
+        $uploadTemplate2JpgFile = TESTS . 'files/test2.jpg';
         $uploadTemplateTxtFile = TESTS . 'files/test.txt';
         $uploadFileActivityProof1 = TESTS . 'files/uploadActivityProof1.jpg';
         $uploadFileActivityProof2 = TESTS . 'files/uploadActivityProof2.txt';
         $uploadFileFreistellungsbescheid1 = TESTS . 'files/uploadTFreistellungsbescheid1.jpg';
         $uploadFileFreistellungsbescheid2 = TESTS . 'files/uploadFreistellungsbescheid2.jpg';
         $uploadFileZuwendungsbestaetigung1 = TESTS . 'files/uploadZuwendungsbestaetigung1.jpg';
-        copy($uploadTemplateJpgFile, $uploadFileActivityProof1);
+        copy($uploadTemplate1JpgFile, $uploadFileActivityProof1);
         copy($uploadTemplateTxtFile, $uploadFileActivityProof2);
-        copy($uploadTemplateJpgFile, $uploadFileFreistellungsbescheid1);
-        copy($uploadTemplateJpgFile, $uploadFileFreistellungsbescheid2);
-        copy($uploadTemplateJpgFile, $uploadFileZuwendungsbestaetigung1);
+        copy($uploadTemplate1JpgFile, $uploadFileFreistellungsbescheid1);
+        copy($uploadTemplate2JpgFile, $uploadFileFreistellungsbescheid2);
+        copy($uploadTemplate1JpgFile, $uploadFileZuwendungsbestaetigung1);
 
         // 1) POST
-        $this->post(Configure::read('AppConfig.htmlHelper')->urlFundingsEdit($testWorkshopUid), [
+        $this->post($route, [
             'referer' => '/',
             'submit_funding' => 1, // must fail
             'Fundings' => [
@@ -314,7 +318,7 @@ class FundingsControllerTest extends AppTestCase
         }
 
         // 2) POST test upload validations
-        $this->post(Configure::read('AppConfig.htmlHelper')->urlFundingsEdit($testWorkshopUid), [
+        $this->post($route, [
             'referer' => '/',
             'Fundings' => [
                 'workshop' => $testWorkshop,
@@ -356,7 +360,7 @@ class FundingsControllerTest extends AppTestCase
         $this->assertCount(1, $funding->fundinguploads_freistellungsbescheids);
 
         // 2) POST test delete uploads
-        $this->post(Configure::read('AppConfig.htmlHelper')->urlFundingsEdit($testWorkshopUid), [
+        $this->post($route, [
             'referer' => '/',
             'Fundings' => [
                 'workshop' => $testWorkshop,
@@ -441,7 +445,7 @@ class FundingsControllerTest extends AppTestCase
             'fundings-fundingsupporter-bic',
         ];
         $validTestWorkshop['website'] = 'https://example.com';
-        $this->post(Configure::read('AppConfig.htmlHelper')->urlFundingsEdit($testWorkshopUid), [
+        $this->post($route, [
             'referer' => '/',
             'submit_funding' => 1,
             'Fundings' => [
@@ -518,13 +522,12 @@ class FundingsControllerTest extends AppTestCase
 
         $funding = $fundingsTable->getUnprivatizedFundingWithAllAssociations($fundingUid);
         $this->assertCount(0, $funding->fundinguploads_zuwendungsbestaetigungs);
-        
 
-        // cleanup everything including file uploads
+        // 7) CLEANUP everything including file uploads
         $fundingsTable = $this->getTableLocator()->get('Fundings');
         $fundingsTable->save($funding);
         $this->expectException(NotFoundException::class);
-        $this->expectExceptionMessage('funding (UID: 14) is submitted and cannot be deleted');
+        $this->expectExceptionMessage('funding (UID: ' . $fundingUid . ') is submitted and cannot be deleted');
         
         $funding->submit_date = null;
         $fundingsTable->deleteCustom($fundingUid);

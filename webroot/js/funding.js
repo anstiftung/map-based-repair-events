@@ -1,7 +1,109 @@
 MappedRepairEvents.Funding = {
 
+    useDisabledRadioButtonsWorkaround: () => {
+        document.querySelector('form').addEventListener('submit', function() {
+            document.querySelectorAll('input[type="radio"][disabled]').forEach(el => {
+                el.removeAttribute('disabled');
+            });
+        });
+    },
+
+    bindSubmitUsageproofButton: (uid) => {
+        $('#submit-usageproof-button-' + uid).on('click', function() {
+            $.prompt('Möchtest du den Verwendungsnachweis wirklich einreichen?',
+                {
+                    buttons: {'Ja, jetzt einreichen': true, Abbrechen: false},
+                    submit: function(v,m,f) {
+                        if(m) {
+                            const form = document.getElementById('fundingForm');
+                            const input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = 'submit_usageproof';
+                            input.value = 1;
+                            form.appendChild(input);
+                            form.submit();
+                        }
+                    }
+                }
+            );
+        });
+    },
+
+    bindReceiptlistCheckboxPaybackOk: (receiptlistDifference) => {
+        $('#fundingForm #fundings-fundingusageproof-payback-ok').on('change', function() {
+            const showCheckbox = receiptlistDifference > 0;
+            MappedRepairEvents.Funding.onClickHandlerReceiptlistCheckboxPaybackOk($(this), showCheckbox);
+        }).trigger('change');
+    },
+
+    onClickHandlerReceiptlistCheckboxPaybackOk: (checkbox, showCheckbox) => {
+        const checkboxWrapper = checkbox.closest('.input');
+        if (showCheckbox) {
+            checkboxWrapper.show();
+        } else {
+            checkboxWrapper.hide();
+        }
+    },
+
+    showOrHideCheckboxD: (show) => {
+        const checkboxWrapper = $('#fundingForm #fundings-fundingusageproof-checkbox-d').closest('.input');
+        if (show) {
+            checkboxWrapper.show();
+        } else {
+            checkboxWrapper.hide();
+        }
+    },
+
+    bindReceiptlistCheckboxA: () => {
+        $('#fundingForm #fundings-fundingusageproof-checkbox-a').on('change', function() {
+            MappedRepairEvents.Funding.onClickHandlerReceiptlistCheckboxA($(this));
+        }).trigger('change');
+    },
+
+    onClickHandlerReceiptlistCheckboxA: (checkbox) => {
+        const isChecked = checkbox.is(':checked');
+        const textarea = checkbox.closest('.inner-wrapper').find('.input.textarea');
+        if (isChecked) {
+            textarea.show();
+        } else {
+            textarea.hide();
+        }
+    },
+
+    bindAddReceiptlistButton: () => {
+        $('#add-receiptlist-button').on('click', function() {
+            const form = document.getElementById('fundingForm');
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'add_receiptlist';
+            input.value = 1;
+            form.appendChild(input);
+            form.submit();
+        });
+    },
+
+    bindDeleteReceiptlistCheckboxClickHandler: () => {
+        $('#fundingForm .receiptlist-delete-checkbox').on('change', function() {
+            MappedRepairEvents.Funding.onClickHandlerDeleteReceiptlistCheckbox();
+        });
+    },
+
+    onClickHandlerDeleteReceiptlistCheckbox: () => {
+        const anyChecked = $('#fundingForm .receiptlist-delete-checkbox').is(':checked');
+        const submitButton = $('#fundingForm').find('button[type="submit"]');
+        const addButton = $('#fundingForm').find('#add-receiptlist-button');
+        addButton.prop('disabled', anyChecked);
+        if (anyChecked) {
+            submitButton.text('Zwischenspeichern und ausgewählte Beleg(e) löschen');
+            submitButton.addClass('red');
+        } else {
+            submitButton.text('Zwischenspeichern');
+            submitButton.removeClass('red');
+        }
+    },
+
     initIsMissing: () => {
-        $('#fundingForm fieldset:not(.fundingbudgetplan) .input.required').find('input, textarea').each(function() {
+        $('#fundingForm fieldset:not(.fundinglist) .input.required').find('input, textarea').each(function() {
             if ($(this).val() === '') {
                 $(this).closest('.input').addClass('is-missing');
             }

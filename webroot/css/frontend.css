@@ -41,6 +41,7 @@ a#urlHelpLink:hover {
     text-decoration: underline;
     color: var(--theme-color-a);
 }
+button[disabled],
 button.disabled,
 a.disabled {
     opacity: 0.5;

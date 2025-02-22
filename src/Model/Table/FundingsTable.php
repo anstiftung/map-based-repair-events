@@ -19,6 +19,8 @@ class FundingsTable extends AppTable
     const FUNDINGBUDGETPLANS_COUNT_HIDDEN = 10;
     const FUNDINGBUDGETPLANS_COUNT = self::FUNDINGBUDGETPLANS_COUNT_VISIBLE + self::FUNDINGBUDGETPLANS_COUNT_HIDDEN;
 
+    const FUNDINGRECEIPTLISTS_COUNT_INITIAL = 1;
+
     public function initialize(array $config): void {
         parent::initialize($config);
         $this->belongsTo('Workshops', [
@@ -58,6 +60,22 @@ class FundingsTable extends AppTable
             ],
             'dependent' => true,
         ]);
+        $this->hasMany('FundinguploadsPrMaterials', [
+            'className' => 'Fundinguploads',
+            'foreignKey' => 'funding_uid',
+            'conditions' => [
+                'FundinguploadsPrMaterials.type' => Fundingupload::TYPE_PR_MATERIAL,
+            ],
+            'dependent' => true,
+        ]);
+        $this->belongsTo('Fundingusageproofs', [
+            'foreignKey' => 'fundingusageproof_id',
+        ]);
+        $this->hasMany('Fundingreceiptlists', [
+            'foreignKey' => 'funding_uid',
+            'dependent' => true,
+        ]);
+
     }
 
     public function getSchema(): TableSchemaInterface
@@ -95,6 +113,15 @@ class FundingsTable extends AppTable
             },
         ]);
 
+        $validator->add('fundinguploads_pr_materials', 'fileCount', [
+            'rule' => function ($value, $context) {
+                if (count($value) > 5) {
+                    return 'Insgesamt sind maximal 5 Dateien erlaubt.';
+                }
+                return true;
+            },
+        ]);
+
         $validator->add('files_fundinguploads_activity_proofs', 'fileTypeAndSize', [
             'rule' => [$this, 'validateFileTypeAndSize'],
         ]);
@@ -102,6 +129,9 @@ class FundingsTable extends AppTable
             'rule' => [$this, 'validateFileTypeAndSize'],
         ]);
         $validator->add('files_fundinguploads_zuwendungsbestaetigungs', 'fileTypeAndSize', [
+            'rule' => [$this, 'validateFileTypeAndSize'],
+        ]);
+        $validator->add('files_fundinguploads_pr_materials', 'fileTypeAndSize', [
             'rule' => [$this, 'validateFileTypeAndSize'],
         ]);
         return $validator;
@@ -148,6 +178,9 @@ class FundingsTable extends AppTable
             'FundinguploadsActivityProofs',
             'FundinguploadsFreistellungsbescheids',
             'FundinguploadsZuwendungsbestaetigungs',
+            'FundinguploadsPrMaterials',
+            'Fundingusageproofs',
+            'Fundingreceiptlists',
         ])->where([
             $this->aliasField('uid') => $fundingUid,
         ])->first();
@@ -181,6 +214,54 @@ class FundingsTable extends AppTable
 
         $filePath = Fundingupload::UPLOAD_PATH . $funding->uid;
         FolderService::deleteFolder($filePath);
+
+    }
+
+    public function findWithUsageproofAssociations($fundingUid): Funding
+    {
+        $associations = [
+            'Fundingusageproofs',
+            'Fundingreceiptlists',
+            'Fundingbudgetplans',
+            'FundinguploadsPrMaterials',
+        ];
+
+        $funding = $this->find()->where([
+            $this->aliasField('uid') => $fundingUid,
+        ])
+        ->contain($associations)
+        ->first();
+
+        return $funding;
+    }
+
+    public function findOrCreateUsageproof($fundingUid): Funding
+    {
+        $funding = $this->findWithUsageproofAssociations($fundingUid);
+        
+        if (empty($funding->fundingusageproof_id)) {
+            $associations = ['Fundingusageproofs', 'Fundingreceiptlists'];
+            $fundingusageproofsTable = TableRegistry::getTableLocator()->get('Fundingusageproofs');
+            $fundingusageproofEntity = $fundingusageproofsTable->newEmptyEntity();
+            $fundingusageproofEntity->main_description = '';
+            $fundingusageproofEntity->difference_declaration = '';
+            $fundingusageproofEntity = $fundingusageproofsTable->save($fundingusageproofEntity);
+
+            $funding->fundingusageproof_id = $fundingusageproofEntity->id;
+            $funding = $this->save($funding, ['associated' => $associations]);
+
+            $fundingreceiptlistsTable = TableRegistry::getTableLocator()->get('Fundingreceiptlists');
+            $i = 0;
+            while($i < self::FUNDINGRECEIPTLISTS_COUNT_INITIAL) {
+                $fundingreceiptlistEntity = $fundingreceiptlistsTable->createNewUnvalidatedEmptyEntity($fundingUid);
+                $fundingreceiptlistEntity = $fundingreceiptlistsTable->save($fundingreceiptlistEntity);
+                $i++;
+            }
+
+        }
+
+        $funding = $this->findWithUsageproofAssociations($fundingUid);
+        return $funding;
 
     }
 

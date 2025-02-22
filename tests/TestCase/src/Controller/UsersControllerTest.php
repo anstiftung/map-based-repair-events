@@ -111,7 +111,7 @@ class UsersControllerTest extends AppTestCase
         );
         $this->assertRedirectContains('/');
 
-        $expectedNewUserUid = 10;
+        $expectedNewUserUid = 12;
         $user = $this->getRegisteredUser();
         $this->assertEquals($user->uid, $expectedNewUserUid);
         $this->assertEquals($user->nick, 'JohnDoeA');

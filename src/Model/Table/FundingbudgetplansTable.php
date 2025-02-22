@@ -47,7 +47,7 @@ class FundingbudgetplansTable extends Table
         $validator
             ->add('description', 'valid', [
                 'rule' => function ($value, $context) {
-                    $descriptionLength = strlen($value);
+                    $descriptionLength = mb_strlen($value);
                     $mainCheck = $descriptionLength >= self::DESCRIPTION_MIN_LENGTH && $descriptionLength <= self::DESCRIPTION_MAX_LENGTH;
 
                     $typeIsEmpty = empty($context['data']['type']);

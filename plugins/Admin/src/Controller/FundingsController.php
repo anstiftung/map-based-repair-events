@@ -11,6 +11,7 @@ use App\Services\PdfWriter\FoerderantragPdfWriterService;
 use League\Csv\Writer;
 use App\Model\Entity\Funding;
 use Cake\Http\Response;
+use App\Services\PdfWriter\VerwendungsnachweisPdfWriterService;
 
 class FundingsController extends AdminAppController
 {
@@ -35,6 +36,11 @@ class FundingsController extends AdminAppController
         ]);
         $this->generateSearchConditions('opt-1');
         parent::beforeFilter($event);
+
+        if ($this->request->getParam('action') === 'usageproofEdit') {
+            $this->FormProtection->setConfig('validate', false);
+        }
+
     }
 
     public function foerderbewilligungPdf($fundingUid): void
@@ -47,6 +53,13 @@ class FundingsController extends AdminAppController
     public function foerderantragPdf($fundingUid): void
     {
         $pdfWriterService = new FoerderantragPdfWriterService();
+        $pdfWriterService->prepareAndSetData($fundingUid, DateTime::now());
+        die($pdfWriterService->writeInline());
+    }
+
+    public function verwendungsnachweisPdf($fundingUid): void
+    {
+        $pdfWriterService = new VerwendungsnachweisPdfWriterService();
         $pdfWriterService->prepareAndSetData($fundingUid, DateTime::now());
         die($pdfWriterService->writeInline());
     }
@@ -166,10 +179,98 @@ class FundingsController extends AdminAppController
             'Leistungsdatum',
         ];
     }
-    
-    public function edit($uid): void
+
+    public function usageproofEdit($uid): void
     {
 
+        if (empty($uid)) {
+            throw new NotFoundException;
+        }
+
+        $fundingsTable = $this->getTableLocator()->get('Fundings');
+        $workshopsTable = $this->getTableLocator()->get('Workshops');
+        $funding = $fundingsTable->find('all',
+        conditions: [
+            $fundingsTable->aliasField('uid') => $uid,
+        ],
+        contain: [
+            'Workshops' => $workshopsTable->getFundingContain(),
+            'OwnerUsers',
+            'Fundingusageproofs',
+            'Fundingsupporters',
+            'Fundingreceiptlists',
+            'Fundingbudgetplans',
+            'FundinguploadsPrMaterials',
+        ])->first();
+
+        if ($funding->owner_user) {
+            $funding->owner_user->revertPrivatizeData();
+        }
+
+        if (empty($funding)) {
+            throw new NotFoundException;
+        }
+
+        $this->set('uid', $funding->uid);
+
+        $this->setReferer();
+
+        if (!empty($this->request->getData())) {
+
+            $patchedEntity = $fundingsTable->patchEntity($funding, $this->request->getData());
+            if (!($patchedEntity->hasErrors())) {
+
+                if ($patchedEntity->isDirty('usageproof_status')) {
+                    if ($patchedEntity->usageproof_status == Funding::STATUS_VERIFIED_BY_ADMIN) {
+
+                        try {
+                
+                            $email = new AppMailer();
+                            $email->viewBuilder()->setTemplate('fundings/usageproof_verified');
+                            $email->setTo([
+                                $funding->owner_user->email,
+                                $funding->fundingsupporter->contact_email,
+                            ]);
+                            $email->setSubject('Verwendungsnachweis von Admin bestätigt (UID: ' . $funding->uid . ')');
+                            $email->setViewVars([
+                                'data' => $funding->owner_user,
+                            ]);
+                    
+                            $pdfWriterServiceA = new VerwendungsnachweisPdfWriterService();
+                            $pdfWriterServiceA->prepareAndSetData($funding->uid, $funding->usageproof_submit_date);
+                            $pdfWriterServiceA->writeFile();
+                            $email->addAttachments([$pdfWriterServiceA->getFilenameWithoutPath() => [
+                                'data' => file_get_contents($pdfWriterServiceA->getFilename()),
+                                'mimetype' => 'application/pdf',
+                            ]]);
+                    
+                            $email->addToQueue();
+                    
+                        } catch (\Exception $e) {
+                            $this->AppFlash->setFlashError('Fehler beim Versenden der E-Mail.');
+                        }
+
+                        $this->AppFlash->setFlashMessage('Der Verwendungsnachweis wurde erfolgreich bestätigt.');
+
+                    } else {
+
+                        $this->sendEmails($patchedEntity);
+                        $patchedEntity->usageproof_submit_date = null;
+                    }
+                }
+
+                $fundingsTable->save($patchedEntity);
+                $this->redirect($this->getReferer());
+            } else {
+                $funding = $patchedEntity;
+            }
+        }
+
+        $this->set('funding', $funding);
+    }    
+
+    public function edit($uid): void
+    {
         if (empty($uid)) {
             throw new NotFoundException;
         }
@@ -229,12 +330,13 @@ class FundingsController extends AdminAppController
         }
 
         $this->set('funding', $funding);
+    
     }
 
     private function sendEmails($funding): void
     {
-        $email = new AppMailer();
         if ($funding->isDirty('freistellungsbescheid_status')) {
+            $email = new AppMailer();
             $email->viewBuilder()->setTemplate('fundings/freistellungsbescheid_status_changed');
             $email->setSubject('Der Status deines Freistellungsbescheides wurde geändert')
             ->setTo($funding->owner_user->email)
@@ -246,6 +348,7 @@ class FundingsController extends AdminAppController
         }
 
         if ($funding->isDirty('activity_proof_status')) {
+            $email = new AppMailer();
             $email->viewBuilder()->setTemplate('fundings/activity_proof_status_changed');
             $email->setSubject('Der Status deines Aktivitätsnachweises wurde geändert')
             ->setTo($funding->owner_user->email)
@@ -257,8 +360,21 @@ class FundingsController extends AdminAppController
         }
 
         if ($funding->isDirty('zuwendungsbestaetigung_status')) {
+            $email = new AppMailer();
             $email->viewBuilder()->setTemplate('fundings/zuwendungsbestaetigung_status_changed');
             $email->setSubject('Der Status deiner Zuwendungsbestätigung wurde geändert')
+            ->setTo($funding->owner_user->email)
+            ->setViewVars([
+                'funding' => $funding,
+                'data' => $funding->owner_user,
+            ]);
+            $email->addToQueue();
+        }
+
+        if ($funding->isDirty('usageproof_status')) {
+            $email = new AppMailer();
+            $email->viewBuilder()->setTemplate('fundings/usageproof_status_changed');
+            $email->setSubject('Der Status deines Verwendungsnachweises wurde geändert')
             ->setTo($funding->owner_user->email)
             ->setViewVars([
                 'funding' => $funding,
@@ -289,7 +405,10 @@ class FundingsController extends AdminAppController
             'FundinguploadsActivityProofs',
             'FundinguploadsFreistellungsbescheids',
             'FundinguploadsZuwendungsbestaetigungs',
+            'FundinguploadsPrMaterials',
             'Fundingbudgetplans',
+            'Fundingusageproofs',
+            'Fundingreceiptlists',
         ]);
 
         $uids = [];

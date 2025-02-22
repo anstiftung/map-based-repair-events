@@ -26,13 +26,12 @@ foreach($blocks as $block) {
 
     if ($i == 4) {
         $pdf->addPage();
-        $pdf->Ln(25);
+        $pdf->Ln(5);
     }
 
     $i++;
 }
 
-$pdf->Ln(10);
 $html = '<b>' . Funding::FIELDS_FUNDINGDATA_DESCRIPTION_LABEL . '</b>';
 $pdf->writeHTML($html, true, false, true, false, '');
 $pdf->Ln(3);

@@ -7,7 +7,7 @@ echo '</div>';
 
 echo '<div class="download-links">';
 
-    echo '<span style="margin-right:5px;">Downloads:</span>';
+    echo '<span style="margin-right:5px;margin-left:10px;"><i class="fa-solid fa-arrow-turn-up fa-rotate-90"></i> Downloads:</span>';
 
     echo $this->Html->link(
         'Förderantrag',

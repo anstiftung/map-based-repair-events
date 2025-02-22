@@ -59,7 +59,7 @@ echo $this->element('funding/fundingEndDateNTimeNotice');
                     'saveLabel' => 'Förderantrag zwischenspeichern',
                 ]);
 
-                echo '<div class="submit-funding-button-wrapper">';
+                echo '<div class="extra-submit-button-wrapper">';
                     echo $this->Form->button('Förderantrag einreichen', [
                         'type' => 'button',
                         'id' => 'submit-funding-button-' . $funding->uid,

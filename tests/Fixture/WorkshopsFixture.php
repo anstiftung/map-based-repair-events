@@ -23,6 +23,13 @@ class WorkshopsFixture extends AppFixture
             'lat' => 52.532,
             'lng' => 13.384,
             'status' => APP_ON,
+        ],
+        [
+            'uid' => 11,
+            'name' => 'Test Workshop 2',
+            'url' => 'test-workshop-2',
+            'email' => 'test-workshop-2@mailinator.com',
+            'owner' => 1,
         ]
     ];
 

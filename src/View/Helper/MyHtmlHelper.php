@@ -8,6 +8,7 @@ use Cake\Core\Configure;
 use Cake\View\Helper\HtmlHelper;
 use App\Controller\Component\StringComponent;
 use App\Model\Entity\Workshop;
+use App\Model\Entity\Funding;
 
 class MyHtmlHelper extends HtmlHelper {
 
@@ -17,6 +18,15 @@ class MyHtmlHelper extends HtmlHelper {
     public array $selectedSub3 = [];
 
     public bool $selectParentElements = true;
+
+
+    public function replaceFundingCheckboxPlaceholders(string $html, Funding $funding): string
+    {
+        $html = str_replace('{RESTBETRAG}', (string) Configure::read('AppConfig.numberHelper')->formatAsDecimal($funding->receiptlist_difference), $html);
+        $html = str_replace('{UID}', (string) $funding->uid, $html);
+        $html = str_replace('{KONTONUMMER}', 'anstiftung, DE75430609671082980800, GENODEM1GLS', $html);
+        return $html;
+    }
 
     public function getHostWithoutProtocol($hostnameWithProtocol): false|string
     {
@@ -245,6 +255,11 @@ class MyHtmlHelper extends HtmlHelper {
         return $this->urlFundings() . '/edit/' . $workshopUid;
     }
 
+    function urlFundingsUsageproof($fundingUid): string
+    {
+        return $this->urlFundings() . '/verwendungsnachweis/' . $fundingUid;
+    }
+
     function urlFundingsUploadZuwendungsbestaetigung($fundingUid): string
     {
         return $this->urlFundings() . '/uploadZuwendungsbestaetigung/' . $fundingUid;
@@ -268,6 +283,11 @@ class MyHtmlHelper extends HtmlHelper {
     function urlFundingFoerderbewilligungDownload($fundingUid): string
     {
         return $this->urlFundings() . '/download/foerderbewilligung/' . $fundingUid;
+    }
+
+    function urlFundingVerwendungsnachweisDownload($fundingUid): string
+    {
+        return $this->urlFundings() . '/download/verwendungsnachweis/' . $fundingUid;
     }
 
     function urlFundingsDelete($fundinguploadId): string

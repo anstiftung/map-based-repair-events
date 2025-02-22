@@ -2,139 +2,21 @@
 declare(strict_types=1);
 namespace App\Model\Entity;
 
+use App\Model\Entity\Traits\FundingAdminFilterTrait;
+use App\Model\Entity\Traits\FundingFieldsTrait;
+use App\Model\Entity\Traits\FundingStatusTrait;
 use Cake\ORM\Entity;
-use App\Model\Table\FundingbudgetplansTable;
 use App\Model\Table\FundingdatasTable;
+use App\Model\Table\FundingusageproofsTable;
 
 class Funding extends Entity
 {
 
-    public static function getAdminFilterOptions(): array {
-        return [
-            'to-be-verified-by-admins' => 'Uploads: ' . self::STATUS_MAPPING_UPLOADS[self::STATUS_PENDING],
-            'rejected-by-admins' => 'Uploads: ' . self::STATUS_MAPPING_UPLOADS[self::STATUS_REJECTED_BY_ADMIN],
-            'no-data-verified' => 'Noch keine Felder bestätigt',
-            'not-submitted' => 'Förderantrag nicht eingereicht',
-            'submitted' => 'Förderantrag eingereicht und noch nicht überwiesen',
-            'submitted-and-money-transferred' => 'Förderantrag überwiesen',
-            'submittable-but-not-submitted' => 'Förderantrag vollständig, aber noch nicht eingereicht',
-            'at-least-one-verfied-by-admin-and-not-all-fields-verified' => 'mind. ein "bestätigt von Admin", aber noch nicht 32 Felder ausgefüllt',
-        ];
-    }
-
-    public static function getAdminFilterConditions(): array {
-        return [
-            'to-be-verified-by-admins' => 'Fundings.activity_proof_status = ' . self::STATUS_PENDING . ' OR Fundings.freistellungsbescheid_status = ' . self::STATUS_PENDING . ' OR (Fundings.submit_date IS NOT NULL AND Fundings.zuwendungsbestaetigung_status = ' . self::STATUS_PENDING . ')',  
-            'rejected-by-admins' => 'Fundings.activity_proof_status = ' . self::STATUS_REJECTED_BY_ADMIN . ' OR Fundings.freistellungsbescheid_status = ' . self::STATUS_REJECTED_BY_ADMIN . ' OR (Fundings.submit_date IS NOT NULL AND Fundings.zuwendungsbestaetigung_status = ' . self::STATUS_REJECTED_BY_ADMIN . ')',
-            'no-data-verified' => 'Fundings.verified_fields IS NULL',
-            'not-submitted' => 'Fundings.submit_date IS NULL',
-            'submitted' => 'Fundings.submit_date IS NOT NULL AND Fundings.money_transfer_date IS NULL',
-            'submitted-and-money-transferred' => 'Fundings.submit_date IS NOT NULL AND Fundings.money_transfer_date IS NOT NULL',
-            'submittable-but-not-submitted' => function($funding) {
-                return $funding->is_submittable && !$funding->is_submitted;
-            },
-            'at-least-one-verfied-by-admin-and-not-all-fields-verified' => function($funding) {
-                return $funding->admin_fields_verified_count > 0 && $funding->user_fields_verified_count < $funding->user_fields_count;
-            },
-        ];
-    }
-
-    const STATUS_PENDING = 10;
-    const STATUS_VERIFIED_BY_ADMIN = 20;
-    const STATUS_REJECTED_BY_ADMIN = 30;
-    const STATUS_BUDGETPLAN_DATA_MISSING = 40;
-    const STATUS_DATA_OK = 50;
-    const STATUS_DESCRIPTION_MISSING = 60;
-    const STATUS_CHECKBOXES_MISSING = 70;
-    const STATUS_CHECKBOXES_OK = 80;
-    const STATUS_UPLOAD_MISSING = 90;
+    use FundingAdminFilterTrait;
+    use FundingFieldsTrait;
+    use FundingStatusTrait;
 
     const MAX_FUNDING_SUM = 3000;
-
-    const STATUS_MAPPING_UPLOADS = [
-        self::STATUS_UPLOAD_MISSING => 'wurde noch nicht hochgeladen',
-        self::STATUS_PENDING => 'Bestätigung von Admin ausstehend',
-        self::STATUS_VERIFIED_BY_ADMIN => 'von Admin bestätigt',
-        self::STATUS_REJECTED_BY_ADMIN => 'von Admin beanstandet',
-    ];
-
-    const STATUS_MAPPING = [
-        self::STATUS_BUDGETPLAN_DATA_MISSING => 'Du musst mindestens eine investive Maßnahme hinzufügen',
-        self::STATUS_DATA_OK => 'Die eingegebenen Daten sind ok',
-        self::STATUS_DESCRIPTION_MISSING => 'Die Beschreibung ist nicht vollständig',
-        self::STATUS_CHECKBOXES_MISSING => 'Bitte bestätige alle Checkboxen',
-        self::STATUS_CHECKBOXES_OK => 'Alle Checkboxen bestätigt',
-    ];
-
-    const FIELDS_WORKSHOP = [
-        ['name' => 'name', 'options' => ['label' => 'Name der Initiative']],
-        ['name' => 'street', 'options' => ['label' => 'Straße + Hausnummer']],
-        ['name' => 'zip', 'options' => ['label' => 'PLZ']],
-        ['name' => 'city', 'options' => ['label' => 'Stadt']],
-        ['name' => 'adresszusatz', 'options' => ['label' => 'Adresszusatz']],
-        ['name' => 'email', 'options' => ['label' => 'E-Mail']],
-        ['name' => 'website', 'options' => ['label' => 'Website']],
-    ];
-
-    const FIELDS_OWNER_USER = [
-        ['name' => 'firstname', 'options' => ['label' => 'Vorname']],
-        ['name' => 'lastname', 'options' => ['label' => 'Nachname']],
-        ['name' => 'email', 'options' => ['label' => 'E-Mail']],
-        ['name' => 'street', 'options' => ['label' => 'Straße + Hausnummer', 'required' => true]],
-        ['name' => 'zip', 'options' => ['label' => 'PLZ']],
-        ['name' => 'city', 'options' => ['label' => 'Stadt', 'required' => true]],
-        ['name' => 'phone', 'options' => ['label' => 'Telefon', 'required' => true]],
-    ];
-
-    const FIELDS_FUNDINGSUPPORTER_ORGANIZATION = [
-        ['name' => 'name', 'options' => ['label' => 'Name']],
-        ['name' => 'legal_form', 'options' => ['label' => 'Rechtsform']],
-        ['name' => 'street', 'options' => ['label' => 'Straße + Hausnummer']],
-        ['name' => 'zip', 'options' => ['label' => 'PLZ']],
-        ['name' => 'city', 'options' => ['label' => 'Stadt']],
-        ['name' => 'website', 'options' => ['label' => 'Website']],
-    ];
-
-    const FIELDS_FUNDINGSUPPORTER_USER = [
-        ['name' => 'contact_firstname', 'options' => ['label' => 'Vorname']],
-        ['name' => 'contact_lastname', 'options' => ['label' => 'Nachname']],
-        ['name' => 'contact_function', 'options' => ['label' => 'Funktion']],
-        ['name' => 'contact_phone', 'options' => ['label' => 'Telefon']],
-        ['name' => 'contact_email', 'options' => ['label' => 'E-Mail']],
-    ];
-
-    const FIELDS_FUNDINGSUPPORTER_BANK = [
-        ['name' => 'bank_account_owner', 'options' => ['label' => 'Kontoinhaber']],
-        ['name' => 'bank_institute', 'options' => ['label' => 'Kreditinstitut']],
-        ['name' => 'iban', 'options' => ['label' => 'IBAN']],
-        ['name' => 'bic', 'options' => ['label' => 'BIC']],
-    ];
-
-    const FIELDS_FUNDINGDATA_DESCRIPTION = [
-        ['name' => 'description', 'options' => ['label' =>  FundingdatasTable::DESCRIPTION_ERROR_MESSAGE, 'type' => 'textarea', 'rows' => 15, 'maxlength' => FundingdatasTable::DESCRIPTION_MAX_LENGTH, 'minlength' => FundingdatasTable::DESCRIPTION_MIN_LENGTH, 'class' => 'no-verify']],
-    ];
-
-    const FIELDS_FUNDINGBUDGETPLAN = [
-        ['name' => 'id', 'options' => ['type' => 'hidden']],
-        ['name' => 'type', 'options' => ['type' => 'select', 'options' => Fundingbudgetplan::TYPE_MAP, 'empty' => 'Förderbereich wählen...', 'label' => false, 'class' => 'no-select2']],
-        ['name' => 'description', 'options' => ['label' => false, 'placeholder' => 'Maßnahme/Gegenstand (' . FundingbudgetplansTable::DESCRIPTION_ERROR_MESSAGE . ')', 'class' => 'no-verify', 'maxlength' => FundingbudgetplansTable::DESCRIPTION_MAX_LENGTH, 'minlength' => FundingbudgetplansTable::DESCRIPTION_MIN_LENGTH]],
-        ['name' => 'amount', 'options' => ['label' => false, 'placeholder' => 'Kosten in € ', 'type' => 'number', 'step' => '0.01']],
-    ];
-
-    const FIELDS_FUNDING_DATA_CHECKBOXES = [
-        ['name' => 'checkbox_a', 'options' => ['type' => 'checkbox', 'class' => 'no-verify', 'label' => 'Mit der zu bewilligende Maßnahme wurde noch nicht begonnen und wird auch nicht vor Erhalt des Bewilligungsbescheides begonnen.', 'escape' => false]],
-        ['name' => 'checkbox_b', 'options' => ['type' => 'checkbox', 'class' => 'no-verify', 'label' => 'Die zugrundeliegende <a href="/seite/richtlinie" target="_blank">Förderrichtlinie</a> habe ich/haben wir zur Kenntnis genommen.', 'escape' => false]],
-        ['name' => 'checkbox_c', 'options' => ['type' => 'checkbox', 'class' => 'no-verify', 'label' => 'Mit der Einreichung erkläre ich mein Einverständnis, dass vorstehende Daten erhoben und elektronisch gespeichert werden, sowie das Einverständnis betroffener Dritter dazu eingeholt zu haben.<br /><i>Die Erhebung, Verarbeitung und Nutzung vorstehender personenbezogener Daten sind nur zulässig, wenn der Betroffene (Antragsteller) eingewilligt hat. Für den Fall, dass hierzu die Einwilligung verweigert wird, kann der Antrag nicht bearbeitet und die beantragte Förderung damit nicht bewilligt werden.</i>', 'escape' => false]],
-    ];
-
-    const FIELDS_WORKSHOP_LABEL = 'Stammdaten der Reparatur-Initiative';
-    const FIELDS_OWNER_USER_LABEL = 'Personenbezogene Daten Ansprechpartner*in';
-    const FIELDS_FUNDINGSUPPORTER_ORGANIZATION_LABEL = 'Stammdaten der Trägerorganisation';
-    const FIELDS_FUNDINGSUPPORTER_USER_LABEL = 'Ansprechpartner*in der Trägerorganisation';
-    const FIELDS_FUNDINGSUPPORTER_BANK_LABEL = 'Bankverbindung der Trägerorganisation';
-    const FIELDS_FUNDINGDATA_DESCRIPTION_LABEL = 'Kurzbeschreibung Vorhaben';
-    const FIELDS_FUNDINGBUDGETPLAN_LABEL = 'Kostenplan';
-    const FIELDS_FUNDING_DATA_CHECKBOXES_LABEL = 'Einverständniserklärungen';
     
     public static function getRenderedFields($fields, $entityString, $form, $disabled, $entity = null): string
     {
@@ -145,6 +27,12 @@ class Funding extends Entity
                 $value = $entity[$field['name']];
                 if ($value !== null) {
                     $field['options']['value'] = number_format((float) $value, 2, '.', '');
+                }
+            }
+            if (isset($field['options']['class']) && preg_match('/datepicker-input/', $field['options']['class'])) {
+                $value = $entity[$field['name']];
+                if ($value !== null) {
+                    $field['options']['value'] = $value->format('d.m.Y');
                 }
             }
             $field['options']['disabled'] = $disabled;
@@ -185,6 +73,33 @@ class Funding extends Entity
         return $result;
     }
 
+    public function _getGroupedValidReceiptlists(): array
+    {
+        $result = [];
+        foreach($this->fundingreceiptlists as $fundingreceiptlist) {
+            if ($fundingreceiptlist->is_valid) {
+                $result[$fundingreceiptlist->type][] = $fundingreceiptlist;
+            }
+        }
+        return $result;
+    }
+
+    public function _getReceiptlistTotal(): float
+    {
+        $total = 0;
+        foreach($this->fundingreceiptlists as $fundingreceiptlist) {
+            if ($fundingreceiptlist->is_valid) {
+                $total += $fundingreceiptlist->amount;
+            }
+        }
+        return $total;
+    }
+
+    public function _getReceiptlistDifference(): float
+    {
+        return $this->budgetplan_total_with_limit - $this->receiptlist_total;
+    }
+
     public function _getGroupedValidBudgetplansTotals(): array
     {
         $result = [];
@@ -192,6 +107,19 @@ class Funding extends Entity
             $total = 0;
             foreach($fundingbudgetplans as $fundingbudgetplan) {
                 $total += $fundingbudgetplan->amount;
+            }
+            $result[$typeId] = $total;
+        }
+        return $result;
+    }
+
+    public function _getGroupedValidReceiptlistsTotals(): array
+    {
+        $result = [];
+        foreach($this->grouped_valid_receiptlists as $typeId => $fundingreceiptlists) {
+            $total = 0;
+            foreach($fundingreceiptlists as $fundingreceiptlist) {
+                $total += $fundingreceiptlist->amount;
             }
             $result[$typeId] = $total;
         }
@@ -257,11 +185,15 @@ class Funding extends Entity
 
     public function _getActivityProofStatusCssClass(): string
     {
-
         if (!empty($this->workshop) && !$this->workshop->funding_activity_proof_required) {
             return '';
         }
         return $this->getAdminStatusCssClass('activity_proof_status');
+    }
+
+    public function _getUsageproofStatusCssClass(): string
+    {
+        return $this->getAdminStatusCssClass('usageproof_status');
     }
 
     public function _getFreistellungsbescheidStatusCssClass(): string
@@ -276,7 +208,7 @@ class Funding extends Entity
 
     private function getAdminStatusCssClass($statusField): string
     {
-        if ($this->$statusField == self::STATUS_UPLOAD_MISSING) {
+        if ($this->$statusField == self::STATUS_UPLOAD_MISSING || $this->$statusField == self::STATUS_DATA_MISSING) {
             return 'is-missing';
         }
         if ($this->$statusField == self::STATUS_PENDING) {
@@ -291,6 +223,199 @@ class Funding extends Entity
         return '';
     }
 
+    public function _getUsageproofIsSubmittable(): bool {
+        return $this->usageproof_descriptions_status == self::STATUS_DATA_OK && 
+            $this->receiptlist_status == self::STATUS_DATA_OK &&
+            $this->usageproof_questions_status == self::STATUS_QUESTIONS_OK &&
+            $this->usageproof_checkboxes_status == self::STATUS_CHECKBOXES_OK;
+    }
+
+    public function _getUsageproofIsSubmitted(): bool {
+        return $this->usageproof_submit_date !== null;
+    }
+
+    public function _getUsageproofExists(): bool
+    {
+        return $this->fundingusageproof_id !== null;
+    }
+
+    public function _getUsageproofQuestionsStatus(): int
+    {
+
+        if (!isset($this->fundingusageproof)) {
+            return self::STATUS_QUESTIONS_MISSING;
+        }
+
+        $radiobuttons = array_map(function($radiobutton) {
+            if ($radiobutton['options']['type'] == 'radio') {
+                return $radiobutton['name'];
+            }
+            return null;
+        }, self::FIELDS_USAGEPROOF_QUESTIONS);
+        $radiobuttons = array_filter($radiobuttons);
+        $radiobuttonsCount = count($radiobuttons);
+
+        $missingRadiobuttonsCount = 0;
+        foreach($radiobuttons as $radiobutton) {
+            if ($this->fundingusageproof->$radiobutton === null) {
+                $missingRadiobuttonsCount++;
+            }
+        }
+
+        if ($missingRadiobuttonsCount == $radiobuttonsCount && $this->fundingusageproof->question_text_a == '' && $this->fundingusageproof->question_text_b == '') {
+            return self::STATUS_QUESTIONS_MISSING;
+        }
+
+        $lengthTextA = mb_strlen($this->fundingusageproof->question_text_a ?? '');
+        if ($missingRadiobuttonsCount > 0 || ($lengthTextA > 0 && $lengthTextA < FundingusageproofsTable::QUESTION_TEXT_A_MIN_LENGTH)) {
+            return self::STATUS_QUESTIONS_PENDING;
+        }
+
+        return self::STATUS_QUESTIONS_OK;
+
+    }
+
+    public function _getUsageproofQuestionsStatusCssClass(): string
+    {
+        if ($this->usageproof_questions_status == self::STATUS_QUESTIONS_MISSING) {
+            return 'is-missing';
+        }
+        if ($this->usageproof_questions_status == self::STATUS_QUESTIONS_PENDING) {
+            return 'is-pending';
+        }
+        if ($this->usageproof_questions_status == self::STATUS_QUESTIONS_OK) {
+            return 'is-verified';
+        }
+        return '';
+    }
+
+    public function _getUsageproofQuestionsStatusHumanReadable(): string
+    {
+        return self::STATUS_MAPPING[$this->usageproof_questions_status];
+    }
+    
+    public function _getUsageproofCheckboxesStatus(): int
+    {
+
+        if (!isset($this->fundingusageproof)) {
+            return self::STATUS_CHECKBOXES_MISSING;
+        }
+
+        $checkboxes = array_map(function($checkbox) {
+            return $checkbox['name'];
+        }, self::FIELDS_USAGEPROOF_CHECKBOXES);
+
+        foreach($checkboxes as $checkbox) {
+            if (count($this->fundinguploads_pr_materials) == 0 && $checkbox == 'checkbox_d') {
+                continue;
+            }
+            if (!$this->fundingusageproof->$checkbox) {
+                return self::STATUS_CHECKBOXES_MISSING;
+            }
+        }
+        return self::STATUS_CHECKBOXES_OK;
+
+    }
+
+    public function _getUsageproofCheckboxesStatusCssClass(): string
+    {
+        if ($this->usageproof_checkboxes_status == self::STATUS_CHECKBOXES_MISSING) {
+            return 'is-missing';
+        }
+        if ($this->usageproof_checkboxes_status == self::STATUS_CHECKBOXES_OK) {
+            return 'is-verified';
+        }
+        return '';
+    }
+
+    public function _getUsageproofCheckboxesStatusHumanReadable(): string
+    {
+        return self::STATUS_MAPPING[$this->usageproof_checkboxes_status];
+    }    
+
+    public function _getUsageproofDescriptionsStatus(): int
+    {
+        if (!empty($this->fundingusageproof)) {
+            $lengthMainDescription = mb_strlen($this->fundingusageproof->main_description);
+            $isValidMainDescription = isset($this->fundingusageproof->main_description)
+                && $lengthMainDescription >= FundingusageproofsTable::MAIN_DESCRIPTION_MIN_LENGTH
+                && $lengthMainDescription <= FundingusageproofsTable::MAIN_DESCRIPTION_MAX_LENGTH;
+
+            if ($lengthMainDescription == 0) {
+                return self::STATUS_DESCRIPTIONS_MISSING;
+            }
+            
+            if ($isValidMainDescription) {
+                return self::STATUS_DATA_OK;
+            };
+
+            return self::STATUS_DESCRIPTIONS_PENDING;
+        }
+
+        return self::STATUS_DESCRIPTIONS_MISSING;
+    }
+
+    public function _getUsageproofDescriptionsStatusCssClass(): string
+    {
+        if ($this->usageproof_descriptions_status == self::STATUS_DATA_OK) {
+            return 'is-verified';
+        }
+
+        if ($this->usageproof_descriptions_status == self::STATUS_DESCRIPTIONS_MISSING) {
+            return 'is-missing';
+        }
+
+        return 'is-pending';
+    }
+
+    public function _getUsageproofDescriptionsStatusHumanReadable(): string
+    {
+        return self::STATUS_MAPPING[$this->usageproof_descriptions_status];
+    }
+
+    public function _getReceiptlistStatusHumanReadable(): string
+    {
+        return self::STATUS_MAPPING[$this->receiptlist_status];
+    }
+
+    public function _getReceiptlistStatusCssClass(): string
+    {
+        if ($this->receiptlist_status == self::STATUS_DATA_OK) {
+            return 'is-verified';
+        }
+
+        if ($this->receiptlist_status == self::STATUS_RECEIPTLIST_DATA_MISSING) {
+            return 'is-missing';
+        }
+
+        return 'is-pending';
+    }
+
+    public function _getReceiptlistStatus(): int
+    {
+
+        if ($this->receiptlist_total == 0) {
+            return self::STATUS_RECEIPTLIST_DATA_MISSING;
+        }
+
+        $differenceDeclarationLength = mb_strlen($this->fundingusageproof->difference_declaration ?? '');
+        if (!empty($this->fundingusageproof) && $this->fundingusageproof->checkbox_a == 1 && (
+            $differenceDeclarationLength < FundingusageproofsTable::DIFFERENCE_DECLARATION_MIN_LENGTH ||
+            $differenceDeclarationLength > FundingusageproofsTable::DIFFERENCE_DECLARATION_MAX_LENGTH)
+        ) {
+            return self::STATUS_RECEIPTLIST_DATA_PENDING;
+        }
+
+        if ($this->receiptlist_difference > 0) {
+            if (!empty($this->fundingusageproof) && $this->fundingusageproof->payback_ok) {
+                return self::STATUS_DATA_OK;
+            }
+            return self::STATUS_RECEIPTLIST_DATA_PENDING;
+        }
+
+        return self::STATUS_DATA_OK;
+    }
+
     public function _getDescriptionStatus(): int
     {
         $length = mb_strlen($this->fundingdata->description);
@@ -300,7 +425,7 @@ class Funding extends Entity
         if ($isValid) {
             return self::STATUS_DATA_OK;
         };
-        return self::STATUS_DESCRIPTION_MISSING;
+        return self::STATUS_DESCRIPTIONS_MISSING;
     }
 
     public function _getDescriptionStatusCssClass(): string
@@ -311,6 +436,11 @@ class Funding extends Entity
         return 'is-pending';
     }
 
+    public function _getUsageproofStatusHumanReadable(): string
+    {
+        return self::STATUS_MAPPING_FOR_USAGEPROOF[$this->usageproof_status];
+    }
+
     public function _getDescriptionStatusHumanReadable(): string
     {
         return self::STATUS_MAPPING[$this->description_status];
@@ -318,17 +448,17 @@ class Funding extends Entity
 
     public function _getActivityProofStatusHumanReadable(): string
     {
-        return self::STATUS_MAPPING_UPLOADS[$this->activity_proof_status];
+        return self::STATUS_MAPPING_CHANGEABLE_BY_ADMIN[$this->activity_proof_status];
     }
 
     public function _getFreistellungsbescheidStatusHumanReadable(): string
     {
-        return self::STATUS_MAPPING_UPLOADS[$this->freistellungsbescheid_status];
+        return self::STATUS_MAPPING_CHANGEABLE_BY_ADMIN[$this->freistellungsbescheid_status];
     }
 
     public function _getZuwendungsbestaetigungStatusHumanReadable(): string
     {
-        return self::STATUS_MAPPING_UPLOADS[$this->zuwendungsbestaetigung_status];
+        return self::STATUS_MAPPING_CHANGEABLE_BY_ADMIN[$this->zuwendungsbestaetigung_status];
     }
 
     public static function getFieldsCount(): int
@@ -414,6 +544,10 @@ class Funding extends Entity
 
     public function _getIsSubmitted(): bool {
         return $this->submit_date !== null;
+    }
+
+    public function _getIsMoneyTransferred(): bool {
+        return $this->money_transfer_date !== null;
     }
 
     public function _getSubmitDateFormatted(): string {

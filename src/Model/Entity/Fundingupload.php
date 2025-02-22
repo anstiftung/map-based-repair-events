@@ -12,6 +12,7 @@ class Fundingupload extends Entity
     const TYPE_ACTIVITY_PROOF = 1;
     const TYPE_FREISTELLUNGSBESCHEID = 2;
     const TYPE_ZUWENDUNGSBESTAETIGUNG = 3;
+    const TYPE_PR_MATERIAL = 4;
 
     const TYPE_MAP_STEP_1 = [
         self::TYPE_ACTIVITY_PROOF => 'activity_proofs',
@@ -22,6 +23,9 @@ class Fundingupload extends Entity
         self::TYPE_ZUWENDUNGSBESTAETIGUNG => 'zuwendungsbestaetigungs',
     ];
 
+    const TYPE_MAP_STEP_3 = [
+        self::TYPE_PR_MATERIAL => 'pr_materials',
+    ];
 
     public function _getFullPath(): string
     {

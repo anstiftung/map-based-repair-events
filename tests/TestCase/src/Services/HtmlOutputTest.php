@@ -129,7 +129,6 @@ class HtmlOutputTest extends AppTestCase
             '/admin/brands/edit/1',
             '/admin/categories',
             '/admin/categories/edit/87',
-            '/admin/fundings',
             '/admin/events',
             Configure::read('AppConfig.htmlHelper')->urlEventEdit(6),
             '/admin/info-sheets',

@@ -130,14 +130,14 @@ return function (RouteBuilder $routes) {
                 'controller'=>'fundings',
                 'action'=>'download'
             ])->setPatterns([
-                'type' => 'foerderantrag|foerderbewilligung',
+                'type' => 'foerderantrag|foerderbewilligung|verwendungsnachweis',
                 'uid' => '[0-9]+'
             ]);
             $routes->connect('/mein-foerderantrag/{action}/{uid}', [
                 'controller' => 'fundings',
                 'action'=> '{action}'
             ])->setPatterns([
-                'action' => 'uploadDetail|uploadZuwendungsbestaetigung|edit|delete',
+                'action' => 'uploadDetail|uploadZuwendungsbestaetigung|edit|delete|verwendungsnachweis',
                 'uid' => '[0-9]+|(' . UUID_REGEX . ')',
             ]);
         }

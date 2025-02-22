@@ -28,8 +28,14 @@ class FundingdatasTable extends Table
 
     public function validationDefault(Validator $validator): Validator
     {
-        $validator->minLength('description', self::DESCRIPTION_MIN_LENGTH, self::DESCRIPTION_ERROR_MESSAGE);
-        $validator->maxLength('description', self::DESCRIPTION_MAX_LENGTH, self::DESCRIPTION_ERROR_MESSAGE);
+        $validator->lengthBetween(
+            'description',
+            [
+                self::DESCRIPTION_MIN_LENGTH,
+                self::DESCRIPTION_MAX_LENGTH,
+            ],
+            self::DESCRIPTION_ERROR_MESSAGE,
+        );
         return $validator;
     }
 

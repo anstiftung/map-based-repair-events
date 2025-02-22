@@ -931,10 +931,10 @@ MappedRepairEvents.Helper = {
     },
 
     initJqueryTabsWithoutAjax : function() {
-        $('.custom-ui-tabs li').on('mouseover', function(e) {
+        $('.custom-ui-tabs > ul > li').on('mouseover', function(e) {
             $(this).addClass('ui-state-hover');
         });
-        $('.custom-ui-tabs li').on('mouseout', function(e) {
+        $('.custom-ui-tabs > ul > li').on('mouseout', function(e) {
             $(this).removeClass('ui-state-hover');
         });
     },

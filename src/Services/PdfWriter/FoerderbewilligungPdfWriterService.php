@@ -5,7 +5,7 @@ namespace App\Services\PdfWriter;
 
 use App\Services\PdfWriter\PdfWriterService;
 use App\Model\Entity\Fundingupload;
-use App\Services\Pdf\FoerderbewilligungTcpdfService;
+use App\Services\Pdf\AnstiftungTcpdfService;
 use Cake\ORM\TableRegistry;
 
 class FoerderbewilligungPdfWriterService extends PdfWriterService
@@ -13,7 +13,7 @@ class FoerderbewilligungPdfWriterService extends PdfWriterService
 
     public function __construct()
     {
-        $this->setPdfLibrary(new FoerderbewilligungTcpdfService());
+        $this->setPdfLibrary(new AnstiftungTcpdfService());
     }
 
     public function getFilenameCustom($funding, $timestamp): string

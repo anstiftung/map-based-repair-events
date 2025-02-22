@@ -33,15 +33,23 @@ class RootsFixture extends AppFixture
         ],
         [
             'uid' => 7,
-            'object_type' => 'info_sheets'
+            'object_type' => 'info_sheets',
         ],
         [
             'uid' => 8,
-            'object_type' => 'users'
+            'object_type' => 'users',
         ],
         [
             'uid' => 9,
-            'object_type' => 'events'
+            'object_type' => 'events',
+        ],
+        [
+            'uid' => 10,
+            'object_type' => 'fundings',
+        ],
+        [
+            'uid' => 11,
+            'object_type' => 'workshops',
         ],
     ];
 }
